@@ -26,6 +26,7 @@ Before starting, ensure you have the following installed:
    - `LINE_CHANNEL_ACCESS_TOKEN`: From LINE Developers Console.
    - `GOOGLE_FORM_URL`: The submission URL for your Google Form.
    - `GOOGLE_FORM_ENTRY_ID`: The specific field ID (e.g., `entry.12345`).
+   - `CLOUDINARY_URL`: Your Cloudinary connection string (`cloudinary://api_key:api_secret@cloud_name`).
 
 ---
 

@@ -7,6 +7,8 @@ import { MessageHandlerService } from './handlers/message-handler.service';
 import { PostbackHandlerService } from './handlers/postback-handler.service';
 import { LifecycleHandlerService } from './handlers/lifecycle-handler.service';
 import { GoogleFormsService } from '../external/google-forms.service';
+import { LineApiService } from '../external/line-api.service';
+import { CloudinaryService } from '../external/cloudinary.service';
 
 @Module({
     imports: [
@@ -20,6 +22,8 @@ import { GoogleFormsService } from '../external/google-forms.service';
         PostbackHandlerService,
         LifecycleHandlerService,
         GoogleFormsService,
+        LineApiService,
+        CloudinaryService,
     ],
 })
 export class WebhookModule { }
