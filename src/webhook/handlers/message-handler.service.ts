@@ -32,14 +32,13 @@ export class MessageHandlerService {
                 const uploadResult = await this.cloudinaryService.uploadBuffer(imageBuffer);
                 this.logger.log(`Image uploaded to Cloudinary: ${uploadResult.secure_url}`);
 
-                // 3. Submit metadata and URL to Google Sheets
+                // 3. Submit metadata AND the Cloudinary response to Google Sheets
                 await this.googleFormsService.submitData({
-                    type: 'image_data',
-                    messageId: event.message.id,
-                    cloudinaryUrl: uploadResult.secure_url,
-                    dataSize: `${imageBuffer.length} bytes`,
+                    type: 'cloudinary_upload_success',
+                    lineMessageId: event.message.id,
                     userId: event.source.userId,
-                    receivedAt: new Date().toISOString()
+                    receivedAt: new Date().toISOString(),
+                    cloudinaryResponse: uploadResult, // Includes secure_url, public_id, size, etc.
                 });
 
             } catch (error) {
