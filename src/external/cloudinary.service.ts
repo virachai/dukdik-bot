@@ -9,13 +9,19 @@ export class CloudinaryService {
     private readonly logger = new Logger(CloudinaryService.name);
 
     constructor(private readonly configService: ConfigService) {
-        const cloudinaryUrl = this.configService.get<string>('CLOUDINARY_URL');
-        if (cloudinaryUrl) {
+        const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+        const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+        const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+
+        if (cloudName && apiKey && apiSecret) {
             cloudinary.config({
-                cloudinary_url: cloudinaryUrl,
+                cloud_name: cloudName,
+                api_key: apiKey,
+                api_secret: apiSecret,
             });
+            this.logger.log('Cloudinary configured successfully');
         } else {
-            this.logger.warn('CLOUDINARY_URL not found in environment variables');
+            this.logger.warn('Cloudinary credentials incomplete in environment variables');
         }
     }
 
