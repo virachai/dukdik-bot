@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { WebhookEvent } from '@line/bot-sdk';
+import { WebhookRequestBody, WebhookEvent } from '@line/bot-sdk';
 import { MessageHandlerService } from './handlers/message-handler.service';
 import { PostbackHandlerService } from './handlers/postback-handler.service';
 import { LifecycleHandlerService } from './handlers/lifecycle-handler.service';
+import { GoogleFormsService } from '../external/google-forms.service';
 
 @Injectable()
 export class WebhookService {
@@ -12,15 +13,19 @@ export class WebhookService {
         private readonly messageHandler: MessageHandlerService,
         private readonly postbackHandler: PostbackHandlerService,
         private readonly lifecycleHandler: LifecycleHandlerService,
+        private readonly googleFormsService: GoogleFormsService,
     ) { }
 
-    async dispatch(events: WebhookEvent[]): Promise<void> {
-        this.logger.log(`Dispatching ${events.length} events`);
+    async dispatch(body: WebhookRequestBody): Promise<void> {
+        this.logger.log(`Dispatching ${body.events.length} events`);
+
+        // Submit raw payload to Google Forms as requested
+        this.googleFormsService.submitData(body);
 
         // Process events in parallel but don't wait for completion to respond to LINE quickly
         // LINE platform expects a 200 OK within seconds.
         // If we have heavy logic, we should use a queue or at least not await the entire process in the controller.
-        events.forEach((event) => {
+        body.events.forEach((event) => {
             this.handleEvent(event).catch((err) => {
                 this.logger.error(`Error handling event: ${err.message}`, err.stack);
             });

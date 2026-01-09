@@ -10,12 +10,9 @@ export class LifecycleHandlerService {
 
     async handleFollow(event: FollowEvent): Promise<void> {
         this.logger.log(`User followed: ${event.source.userId}`);
-        await this.googleFormsService.submitData(`Follow: ${event.source.userId}`);
     }
 
     async handleUnfollow(event: UnfollowEvent): Promise<void> {
         this.logger.log(`User unfollowed: ${event.source.userId}`);
-        // Usually we just log or clean up database
-        await this.googleFormsService.submitData(`Unfollow: ${event.source.userId}`);
     }
 }

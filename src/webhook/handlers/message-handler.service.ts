@@ -14,9 +14,6 @@ export class MessageHandlerService {
         if (event.message.type === 'text') {
             const text = event.message.text;
             this.logger.log(`Received text: ${text}`);
-
-            // Example business logic: Forward to Google Forms
-            await this.googleFormsService.submitData(`Message: ${text} | User: ${event.source.userId}`);
         } else {
             this.logger.log(`Ignoring non-text message type: ${event.message.type}`);
         }

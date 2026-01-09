@@ -10,8 +10,5 @@ export class PostbackHandlerService {
 
     async handle(event: PostbackEvent): Promise<void> {
         this.logger.log(`Handling postback event: ${event.postback.data}`);
-
-        // Example logic: Submit postback data to Google Forms
-        await this.googleFormsService.submitData(`Postback: ${event.postback.data} | User: ${event.source.userId}`);
     }
 }

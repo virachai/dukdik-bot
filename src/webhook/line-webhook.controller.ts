@@ -17,7 +17,7 @@ export class WebhookController {
 
         // Pass events to service for dispatching
         // We return 200 OK immediately after dispatching starts
-        await this.webhookService.dispatch(body.events);
+        await this.webhookService.dispatch(body);
 
         return { status: 'success' };
     }

@@ -21,15 +21,14 @@ export class GoogleFormsService {
    * Submits data to Google Forms asynchronously.
    * This does not block the webhook response.
    */
-  async submitData(data: string): Promise<void> {
+  async submitData(data: any): Promise<void> {
     try {
+      const stringifiedData = typeof data === 'string' ? data : JSON.stringify(data);
       const params = new URLSearchParams();
-      params.append(this.entryId, data);
+      params.append(this.entryId, stringifiedData);
 
-      this.logger.log(`Submitting data to Google Forms: ${data}`);
-      
-      // We don't necessarily need to wait for this in the main flow, 
-      // but for reliability we wrap it in a try-catch.
+      this.logger.log(`Submitting data to Google Forms: ${stringifiedData}`);
+
       firstValueFrom(this.httpService.post(this.formUrl, params.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
