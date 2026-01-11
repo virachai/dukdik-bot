@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 export class LineApiService {
     private readonly logger = new Logger(LineApiService.name);
     private readonly blobClient: messagingApi.MessagingApiBlobClient;
+    private readonly messagingClient: messagingApi.MessagingApiClient;
 
     constructor(
         private readonly configService: ConfigService,
@@ -17,6 +18,24 @@ export class LineApiService {
         this.blobClient = new messagingApi.MessagingApiBlobClient({
             channelAccessToken: accessToken,
         });
+        this.messagingClient = new messagingApi.MessagingApiClient({
+            channelAccessToken: accessToken,
+        });
+    }
+
+    /**
+     * Sends a reply message to the user.
+     */
+    async replyMessage(replyToken: string, messages: any[]): Promise<void> {
+        try {
+            await this.messagingClient.replyMessage({
+                replyToken,
+                messages,
+            });
+        } catch (error) {
+            this.logger.error(`Failed to send reply message: ${error.message}`);
+            throw error;
+        }
     }
 
     /**

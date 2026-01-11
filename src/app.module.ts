@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WebhookModule } from './webhook/webhook.module';
@@ -8,6 +9,19 @@ import { WebhookModule } from './webhook/webhook.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        url: configService.get<string>('DATABASE_URL'),
+        autoLoadEntities: true,
+        synchronize: true, // Tip: set to false in production
+        ssl: {
+          rejectUnauthorized: false, // Required for Neon
+        },
+      }),
     }),
     WebhookModule,
   ],
