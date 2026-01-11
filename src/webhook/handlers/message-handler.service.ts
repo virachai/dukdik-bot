@@ -26,11 +26,11 @@ export class MessageHandlerService {
         this.logger.log(`Handling message event (type: ${event.message.type}) from user: ${event.source.userId}`);
 
         if (event.message.type === 'text') {
-            const text = event.message.text;
+            const text = event.message.text.trim().toUpperCase();
             this.logger.log(`Received text: ${text}`);
 
-            // Handle 'ดึงรูปปัจจุบันกลับมา' request
-            if (text === 'ส่งรูปนี้กลับมา') {
+            // Handle '0' or 'ส่งรูปนี้กลับมา' request
+            if (text === '0' || text === 'ส่งรูปนี้กลับมา') {
                 try {
                     const lastAsset = await this.assetRepository.findOne({
                         where: { lineUserId: event.source.userId, type: 'image' },
@@ -89,28 +89,33 @@ export class MessageHandlerService {
                 return;
             }
 
-            // Handle job selection
-            const jobTypes = ['งานที่ 1', 'งานที่ 2', 'งานที่ 3'];
-            if (jobTypes.includes(text)) {
-                // Save Job to DB
+            // Handle Job Numbers or 'X'
+            const jobMap: Record<string, string> = { '1': 'งานที่ 1', '2': 'งานที่ 2', '3': 'งานที่ 3' };
+            if (jobMap[text]) {
+                const jobType = jobMap[text];
                 try {
                     const job = this.jobRepository.create({
                         lineUserId: event.source.userId,
-                        jobType: text,
+                        jobType: jobType,
                         status: 'processing'
                     });
                     await this.jobRepository.save(job);
-                    this.logger.log(`Job ${text} saved for user ${event.source.userId}`);
+                    this.logger.log(`Job ${jobType} saved for user ${event.source.userId}`);
                 } catch (error) {
                     this.logger.error(`Failed to save job to DB: ${error.message}`);
                 }
 
                 await this.lineApiService.replyMessage(event.replyToken, [
-                    {
-                        type: 'text',
-                        text: 'กำลัง process...',
-                    },
+                    { type: 'text', text: 'กำลัง process...' },
                 ]);
+                return;
+            }
+
+            if (text === 'X') {
+                await this.lineApiService.replyMessage(event.replyToken, [
+                    { type: 'text', text: 'รับทราบครับ หากต้องการทำอะไรเพิ่มเติม ส่งรูปหรือข้อความมาได้เสมอครับ' },
+                ]);
+                return;
             }
         }
 
@@ -139,44 +144,46 @@ export class MessageHandlerService {
 
                 // 3. Reply Sequence
                 await this.lineApiService.replyMessage(event.replyToken, [
-                    // M1: Status + Mock AI Description + Quick Reply (Current Image)
+                    // M1: Status + Mock AI Description
                     {
                         type: 'text',
                         text: 'ได้รับรูปภาพเรียบร้อยครับ!\n\n📄 คำอธิบาย: รอ migrate AI',
-                        quickReply: {
-                            items: [
-                                {
-                                    type: 'action',
-                                    action: { type: 'message', label: '📥 ส่งรูปนี้กลับมา', text: 'ส่งรูปนี้กลับมา' },
-                                },
-                            ],
-                        },
                     },
                     // M2, M3, M4: 3 Stickers
                     { type: 'sticker', packageId: '446', stickerId: '1988' },
                     { type: 'sticker', packageId: '446', stickerId: '1989' },
                     { type: 'sticker', packageId: '446', stickerId: '1990' },
-                    // M5: Job Selection Menu + Previous Image
+                    // M5: Instructions Legend + Selection Menu
                     {
                         type: 'text',
-                        text: 'โปรดเลือกงานที่ต้องการดำเนินการต่อ:',
+                        text: '📖 คำอธิบาย:\n' +
+                            '📥 0: ขอรูปคืนแชท\n' +
+                            '🎨 1: ดำเนินงานที่ 1\n' +
+                            '📝 2: ดำเนินงานที่ 2\n' +
+                            '🚀 3: ดำเนินงานที่ 3\n' +
+                            '🏁 X: ไม่ทำอะไรเพิ่ม\n\n' +
+                            'โปรดเลือกหมายเลขที่ต้องการ:',
                         quickReply: {
                             items: [
                                 {
                                     type: 'action',
-                                    action: { type: 'message', label: 'งานที่ 1', text: 'งานที่ 1' },
+                                    action: { type: 'message', label: '📥 0', text: '0' },
                                 },
                                 {
                                     type: 'action',
-                                    action: { type: 'message', label: 'งานที่ 2', text: 'งานที่ 2' },
+                                    action: { type: 'message', label: '🎨 1', text: '1' },
                                 },
                                 {
                                     type: 'action',
-                                    action: { type: 'message', label: 'งานที่ 3', text: 'งานที่ 3' },
+                                    action: { type: 'message', label: '📝 2', text: '2' },
                                 },
                                 {
                                     type: 'action',
-                                    action: { type: 'message', label: '🔍 ดูรูปก่อนหน้า', text: 'ดูรูปก่อนหน้า' },
+                                    action: { type: 'message', label: '🚀 3', text: '3' },
+                                },
+                                {
+                                    type: 'action',
+                                    action: { type: 'message', label: '🏁 X', text: 'X' },
                                 },
                             ],
                         },
