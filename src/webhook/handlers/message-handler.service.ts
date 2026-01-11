@@ -144,10 +144,10 @@ export class MessageHandlerService {
 
                 // 3. Reply Sequence
                 await this.lineApiService.replyMessage(event.replyToken, [
-                    // M1: Status + Mock AI Description
+                    // M1: Status + Mock AI Description + Image Link
                     {
                         type: 'text',
-                        text: 'ได้รับรูปภาพเรียบร้อยครับ!\n\n📄 คำอธิบาย: รอ migrate AI',
+                        text: `ได้รับรูปภาพเรียบร้อยครับ!\n\n📄 คำอธิบาย: รอ migrate AI\n\n🔗 ดูรูปภาพ: ${uploadResult.secure_url}`,
                     },
                     // M2, M3, M4: 3 Stickers
                     { type: 'sticker', packageId: '446', stickerId: '1988' },
