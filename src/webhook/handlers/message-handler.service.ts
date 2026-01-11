@@ -29,6 +29,66 @@ export class MessageHandlerService {
             const text = event.message.text;
             this.logger.log(`Received text: ${text}`);
 
+            // Handle 'ดึงรูปปัจจุบันกลับมา' request
+            if (text === 'ส่งรูปนี้กลับมา') {
+                try {
+                    const lastAsset = await this.assetRepository.findOne({
+                        where: { lineUserId: event.source.userId, type: 'image' },
+                        order: { createdAt: 'DESC' }
+                    });
+
+                    if (lastAsset && lastAsset.cloudinaryUrl) {
+                        await this.lineApiService.replyMessage(event.replyToken, [
+                            {
+                                type: 'image',
+                                originalContentUrl: lastAsset.cloudinaryUrl,
+                                previewImageUrl: lastAsset.cloudinaryUrl,
+                            },
+                        ]);
+                    }
+                } catch (error) {
+                    this.logger.error(`Error fetching current asset: ${error.message}`);
+                }
+                return;
+            }
+
+            // Handle 'ดูรูปก่อนหน้า' request
+            if (text === 'ดูรูปก่อนหน้า') {
+                try {
+                    const previousAssets = await this.assetRepository.find({
+                        where: { lineUserId: event.source.userId, type: 'image' },
+                        order: { createdAt: 'DESC' },
+                        take: 1,
+                        skip: 1
+                    });
+
+                    if (previousAssets.length > 0 && previousAssets[0].cloudinaryUrl) {
+                        const lastAsset = previousAssets[0];
+                        await this.lineApiService.replyMessage(event.replyToken, [
+                            {
+                                type: 'text',
+                                text: 'นี่คือรูปภาพล่าสุดที่คุณเคยส่งมาครับ:',
+                            },
+                            {
+                                type: 'image',
+                                originalContentUrl: lastAsset.cloudinaryUrl,
+                                previewImageUrl: lastAsset.cloudinaryUrl,
+                            },
+                        ]);
+                    } else {
+                        await this.lineApiService.replyMessage(event.replyToken, [
+                            {
+                                type: 'text',
+                                text: 'ไม่พบประวัติรูปภาพก่อนหน้านี้ครับ',
+                            },
+                        ]);
+                    }
+                } catch (error) {
+                    this.logger.error(`Error fetching last asset: ${error.message}`);
+                }
+                return;
+            }
+
             // Handle job selection
             const jobTypes = ['งานที่ 1', 'งานที่ 2', 'งานที่ 3'];
             if (jobTypes.includes(text)) {
@@ -56,52 +116,50 @@ export class MessageHandlerService {
 
         if (event.message.type === 'image') {
             try {
-                // 1. Fetch binary data from LINE
+                // 1. Fetch, Upload, and Save
                 const imageBuffer = await this.lineApiService.getMessageContent(event.message.id);
-                this.logger.log(`Image content fetched. Size: ${imageBuffer.length} bytes`);
-
-                // 2. Upload to Cloudinary
                 const uploadResult = await this.cloudinaryService.uploadBuffer(imageBuffer);
-                this.logger.log(`Image uploaded to Cloudinary: ${uploadResult.secure_url}`);
 
-                // 3. Save to Postgres
-                try {
-                    const asset = this.assetRepository.create({
-                        lineUserId: event.source.userId,
-                        lineMessageId: event.message.id,
-                        type: 'image',
-                        cloudinaryUrl: uploadResult.secure_url,
-                        cloudinaryPublicId: uploadResult.public_id,
-                        metadata: {
-                            size: imageBuffer.length,
-                            format: uploadResult.format,
-                            width: uploadResult.width,
-                            height: uploadResult.height
-                        }
-                    });
-                    await this.assetRepository.save(asset);
-                    this.logger.log('Image asset saved to Postgres');
-                } catch (error) {
-                    this.logger.error(`Failed to save asset to Postgres: ${error.message}`);
-                }
+                const asset = this.assetRepository.create({
+                    lineUserId: event.source.userId,
+                    lineMessageId: event.message.id,
+                    type: 'image',
+                    cloudinaryUrl: uploadResult.secure_url,
+                    cloudinaryPublicId: uploadResult.public_id,
+                    metadata: { size: imageBuffer.length, format: uploadResult.format }
+                });
+                await this.assetRepository.save(asset);
 
-                // 4. Submit to Google Sheets (legacy)
+                // 2. Submit to Google Sheets
                 await this.googleFormsService.submitData({
                     type: 'cloudinary_upload_success',
                     lineMessageId: event.message.id,
-                    userId: event.source.userId,
-                    receivedAt: new Date().toISOString(),
-                    cloudinaryResponse: uploadResult,
+                    cloudinaryUrl: uploadResult.secure_url,
                 });
 
-                // 5. Reply with Stickers + Menu
+                // 3. Reply Sequence
                 await this.lineApiService.replyMessage(event.replyToken, [
+                    // M1: Status + Mock AI Description + Quick Reply (Current Image)
+                    {
+                        type: 'text',
+                        text: 'ได้รับรูปภาพเรียบร้อยครับ!\n\n📄 คำอธิบาย: รอ migrate AI',
+                        quickReply: {
+                            items: [
+                                {
+                                    type: 'action',
+                                    action: { type: 'message', label: '📥 ส่งรูปนี้กลับมา', text: 'ส่งรูปนี้กลับมา' },
+                                },
+                            ],
+                        },
+                    },
+                    // M2, M3, M4: 3 Stickers
                     { type: 'sticker', packageId: '446', stickerId: '1988' },
                     { type: 'sticker', packageId: '446', stickerId: '1989' },
                     { type: 'sticker', packageId: '446', stickerId: '1990' },
+                    // M5: Job Selection Menu + Previous Image
                     {
                         type: 'text',
-                        text: 'ได้รับรูปภาพแล้วครับ ผมส่งสติกเกอร์ตัวแทนงาน 1, 2 และ 3 ให้แล้ว โปรดเลือกงานที่ต้องการดำเนินการ:',
+                        text: 'โปรดเลือกงานที่ต้องการดำเนินการต่อ:',
                         quickReply: {
                             items: [
                                 {
@@ -116,6 +174,10 @@ export class MessageHandlerService {
                                     type: 'action',
                                     action: { type: 'message', label: 'งานที่ 3', text: 'งานที่ 3' },
                                 },
+                                {
+                                    type: 'action',
+                                    action: { type: 'message', label: '🔍 ดูรูปก่อนหน้า', text: 'ดูรูปก่อนหน้า' },
+                                },
                             ],
                         },
                     },
@@ -124,10 +186,7 @@ export class MessageHandlerService {
             } catch (error) {
                 this.logger.error(`Error processing image message: ${error.message}`);
                 await this.lineApiService.replyMessage(event.replyToken, [
-                    {
-                        type: 'text',
-                        text: 'เกิดข้อผิดพลาดในการประมวลผลรูปภาพ กรุณาลองใหม่อีกครั้ง',
-                    },
+                    { type: 'text', text: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' },
                 ]);
             }
         }

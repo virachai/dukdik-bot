@@ -39,6 +39,21 @@ export class LineApiService {
     }
 
     /**
+     * Sends a simple text message to a user (push).
+     */
+    async pushMessage(userId: string, messages: any[]): Promise<void> {
+        try {
+            await this.messagingClient.pushMessage({
+                to: userId,
+                messages,
+            });
+        } catch (error) {
+            this.logger.error(`Failed to push message: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
      * Fetches the content of a message (image, video, etc.)
      * returns the binary data as a Buffer.
      */
